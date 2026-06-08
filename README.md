@@ -1,61 +1,186 @@
 # Peerya
 
-Modern landing page for **Peerya** — committed global learning teams with AI accountability.
+> Nobody learns alone anymore.
 
-## Stack
+Peerya is building the future of collaborative self-learning.
 
-- [Next.js](https://nextjs.org) 16 (App Router)
-- TypeScript
-- Tailwind CSS v4
+We believe the internet solved access to knowledge but failed to solve one fundamental problem:
 
-## Getting started
+**Learning is still lonely.**
 
-```bash
-npm install
-npm run dev
-```
+Every day, millions of ambitious students, developers, creators, and professionals try to learn new skills alone. They start courses, watch tutorials, and set goals—but most eventually lose momentum because they lack accountability, community, and a team that grows with them.
 
-Open [http://localhost:3000](http://localhost:3000).
+Peerya changes that.
 
-## Waitlist API
+---
 
-- `GET /api/waitlist` — returns `{ count }`
-- `POST /api/waitlist` — body `{ "email": "you@example.com" }`
+## The Problem
 
-Emails and count are stored in `data/waitlist.json`. To reset or seed the count, edit that file:
+Traditional education provides structure and peers.
 
-```json
-{
-  "count": 42,
-  "emails": []
-}
-```
+Self-learning does not.
 
-> **Vercel note:** Serverless deployments use a read-only filesystem. Signups are kept in memory across warm invocations; for durable storage in production, connect Vercel KV, Postgres, or a service like Resend/Airtable and update `src/lib/waitlist.ts`.
+Most people learning outside formal education face the same challenges:
 
-## Deploy on Vercel
+* No accountability
+* No consistent learning partners
+* No sense of belonging
+* No long-term support system
+* High dropout rates
+* Difficulty finding people with similar goals
 
-1. Push this repo to GitHub.
-2. Import the project at [vercel.com/new](https://vercel.com/new).
-3. Deploy — no extra configuration required.
+The result is isolation, inconsistency, and unrealized potential.
 
-```bash
-npm run build
-```
+---
 
-## Project structure
+## Our Vision
 
-```
-src/
-  app/
-    api/waitlist/route.ts   # Waitlist endpoints
-    page.tsx                # Landing page
-    layout.tsx              # Root layout + metadata
-    globals.css             # Design system
-  components/
-    ScrollReveal.tsx        # Scroll fade-in observer
-  lib/
-    waitlist.ts             # Waitlist persistence
-data/
-  waitlist.json             # Waitlist store
-```
+Imagine joining a small team of ambitious people from around the world who:
+
+* Share your learning goals
+* Match your experience level
+* Meet regularly
+* Support each other daily
+* Grow together over months and years
+
+Peerya exists to create those teams.
+
+We believe every ambitious person deserves a tribe.
+
+---
+
+## How Peerya Works
+
+### 1. Join
+
+Users apply by sharing:
+
+* Skill interest
+* Experience level
+* Location
+* Learning goals
+* Commitment preferences
+
+### 2. Match
+
+Peerya forms carefully curated teams of 5–10 people based on:
+
+* Shared interests
+* Skill level compatibility
+* Commitment alignment
+* Learning objectives
+
+### 3. Commit
+
+Each team makes a collective commitment to grow together through:
+
+* Weekly meetings
+* Daily accountability
+* Shared milestones
+* Long-term support
+
+### 4. Grow
+
+Members:
+
+* Learn faster
+* Stay accountable
+* Build meaningful relationships
+* Achieve goals together
+
+---
+
+## The Role of AI
+
+Peerya uses AI as a facilitator, not a replacement for human connection.
+
+Our AI systems help:
+
+* Guide meetings
+* Track commitments
+* Monitor progress
+* Generate accountability prompts
+* Surface team insights
+* Encourage consistent participation
+
+The goal is simple:
+
+**More human connection, not less.**
+
+---
+
+## Current MVP
+
+The current Peerya MVP includes:
+
+* Landing page
+* Waitlist onboarding
+* User application form
+* Team formation workflow
+* Founder notifications
+* Applicant confirmation emails
+* Community validation system
+
+Future releases will include:
+
+* Team dashboards
+* AI meeting facilitator
+* Progress tracking
+* Team leaderboards
+* Learning analytics
+* Community matching engine
+
+---
+
+## Why Peerya Is Different
+
+Most platforms help people consume information.
+
+Peerya helps people stay committed.
+
+Most communities create audiences.
+
+Peerya creates teams.
+
+Most learning platforms focus on content.
+
+Peerya focuses on belonging.
+
+---
+
+## Long-Term Mission
+
+Our mission is to become the place where ambitious people find:
+
+* Learning partners
+* Accountability partners
+* Collaborators
+* Co-founders
+* Mentors
+* Lifelong teammates
+
+We are not building another course platform.
+
+We are building the social infrastructure for ambitious people.
+
+---
+
+## Founder Story
+
+The idea emerged from a simple realization:
+
+Despite having unlimited access to knowledge online, many ambitious learners still feel alone.
+
+Peerya is an attempt to solve that problem at a global scale.
+
+---
+
+## Status
+
+Early Stage Startup
+
+Currently validating demand and forming the first generation of learning teams.
+
+
+
+*"The internet gave us infinite knowledge. Peerya gives us a team."*
