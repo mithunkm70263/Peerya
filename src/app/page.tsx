@@ -2,29 +2,15 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import emailjs from "@emailjs/browser";
+import { motion, useInView, Variants } from "framer-motion";
+import Tilt from "react-parallax-tilt";
+import dynamic from "next/dynamic";
 
-import { ScrollReveal } from "@/components/ScrollReveal";
+import { CustomCursor } from "@/components/CustomCursor";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 
-function CursorTracker() {
-  const [pos, setPos] = useState({ x: -200, y: -200 });
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setPos({ x: e.clientX, y: e.clientY });
-    };
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
-  
-  return (
-    <div 
-      className="pointer-events-none fixed inset-0 z-50 transition-transform duration-75"
-      style={{
-        background: `radial-gradient(circle 500px at ${pos.x}px ${pos.y}px, rgba(124, 58, 237, 0.08), transparent 80%)`
-      }}
-      aria-hidden="true"
-    />
-  );
-}
+// Lazy load the 3D scene to avoid blocking initial paint
+const Hero3DScene = dynamic(() => import("@/components/Hero3DScene").then(m => m.Hero3DScene), { ssr: false });
 
 /* ─────────────────────────────────────────────
    DATA
@@ -158,14 +144,14 @@ function ParticleCanvas() {
     resize();
     window.addEventListener("resize", resize);
 
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < 60; i++) {
       particles.push({
         x: Math.random() * window.innerWidth,
         y: Math.random() * window.innerHeight,
-        vx: (Math.random() - 0.5) * 0.4,
-        vy: (Math.random() - 0.5) * 0.4,
-        r: Math.random() * 1.5 + 0.5,
-        alpha: Math.random() * 0.5 + 0.15,
+        vx: (Math.random() - 0.5) * 0.2, // Drifting horizontally slightly
+        vy: -Math.random() * 0.5 - 0.2,  // Drifting UPWARD
+        r: Math.random() * 2 + 0.5,
+        alpha: Math.random() * 0.5 + 0.1,
       });
     }
 
@@ -176,29 +162,18 @@ function ParticleCanvas() {
         if (p.x < 0) p.x = canvas.width;
         if (p.x > canvas.width) p.x = 0;
         if (p.y < 0) p.y = canvas.height;
+        // Fireflies reset to bottom
         if (p.y > canvas.height) p.y = 0;
+        
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(139,92,246,${p.alpha})`;
+        // Ember/Firefly glow
+        ctx.fillStyle = `rgba(245, 158, 11, ${p.alpha})`;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = `rgba(245, 158, 11, ${p.alpha})`;
         ctx.fill();
+        ctx.shadowBlur = 0; // reset
       });
-
-      // Draw connections
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 140) {
-            ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(124,58,237,${0.12 * (1 - dist / 140)})`;
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-          }
-        }
-      }
 
       animId = requestAnimationFrame(draw);
     };
@@ -210,31 +185,52 @@ function ParticleCanvas() {
     };
   }, []);
 
-  return <canvas id="particle-canvas" ref={canvasRef} aria-hidden="true" />;
+  return <canvas id="particle-canvas" ref={canvasRef} aria-hidden="true" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: -1 }} />;
 }
 
 /* ─────────────────────────────────────────────
    ANIMATED COUNTER
    ───────────────────────────────────────────── */
-function AnimatedStat({ number, label }: { number: string; label: string }) {
+function AnimatedStat({ number, label, delay = 0 }: { number: string; label: string, delay?: number }) {
+  const isPercent = number.includes("%");
+  const value = parseInt(number.replace(/\D/g, ""));
+  const [count, setCount] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  const inView = useInView(ref, { once: true, amount: 0.5 });
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) { setVisible(true); obs.disconnect(); }
-    }, { threshold: 0.4 });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
+    if (inView) {
+      setTimeout(() => {
+        let current = 0;
+        const target = value;
+        const duration = 1500;
+        const step = Math.max(1, Math.floor(target / (duration / 16)));
+        
+        const timer = setInterval(() => {
+          current += step;
+          if (current >= target) {
+            setCount(target);
+            clearInterval(timer);
+          } else {
+            setCount(current);
+          }
+        }, 16);
+      }, delay * 1000);
+    }
+  }, [inView, value, delay]);
 
   return (
-    <div ref={ref} className="stat-item">
-      <div className={`stat-number${visible ? " stat-visible" : ""}`}>{number}</div>
+    <motion.div 
+      ref={ref} 
+      className="stat-item glass-card"
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.6, delay: delay }}
+    >
+      <div className="stat-number">{count}{isPercent ? "%" : ""}</div>
       <p className="stat-label">{label}</p>
-    </div>
+    </motion.div>
   );
 }
 
@@ -321,12 +317,22 @@ export default function Home() {
     }
   }
 
+  // Animation variants
+  const fadeInUp: Variants = {
+    hidden: { opacity: 0, y: 40, filter: "blur(10px)" },
+    visible: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.8, ease: "easeOut" } }
+  };
+
+  const staggerContainer: Variants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.15 } }
+  };
+
   /* ─── JSX ─── */
   return (
     <main className="site-shell">
-      <CursorTracker />
-      <ParticleCanvas />
-      <ScrollReveal />
+      <CustomCursor />
+      <AnimatedBackground />
 
       {/* ── NAV ── */}
       <nav className="navbar" aria-label="Primary navigation">
@@ -341,56 +347,44 @@ export default function Home() {
         </div>
       </nav>
 
-      <div className="nav-proof">Built by a student. For every student building alone.</div>
+      <div className="nav-proof relative z-10">Built by a student. For every student building alone.</div>
 
       {/* ── HERO ── */}
-      <section id="hero" className="hero section glow-section">
-        <div className="hero-copy reveal">
-          <p className="beta-badge">Private Beta — First 100 members only</p>
-          <p className="eyebrow">Teams for serious self-learners</p>
-          <h1>
-            Nobody learns<br />
-            <span className="gradient-text">alone</span> anymore.
+      <section id="hero" className="hero section relative z-10">
+        <motion.div 
+          className="hero-copy"
+          initial="hidden"
+          animate="visible"
+          variants={staggerContainer}
+        >
+          <motion.p variants={fadeInUp} className="beta-badge">Private Beta — First 100 members only</motion.p>
+          <motion.p variants={fadeInUp} className="eyebrow">Teams for serious self-learners</motion.p>
+          <h1 className="flex flex-col gap-2">
+            <motion.span variants={fadeInUp} className="block origin-bottom-left rotate-[-1deg]">Nobody learns</motion.span>
+            <motion.span variants={fadeInUp} className="block"><span className="gradient-text">alone</span> anymore.</motion.span>
           </h1>
-          <p className="hero-subhead">
+          <motion.p variants={fadeInUp} className="hero-subhead mt-6">
             Peerya forms committed teams of 5–10 people across the world,
             matched by skill and experience level, guided by an AI agent that
             keeps everyone accountable — every single day.
-          </p>
-          <div className="hero-actions">
+          </motion.p>
+          <motion.div variants={fadeInUp} className="hero-actions">
             <a className="button button-large" href="#waitlist">Join the Waitlist</a>
             <a className="button button-ghost button-large" href="#how-it-works">See how it works</a>
-          </div>
-          <p className="cohort-note" style={{ marginTop: "20px" }}>
+          </motion.div>
+          <motion.p variants={fadeInUp} className="cohort-note" style={{ marginTop: "20px" }}>
             Limited spots in the first cohort — applications close soon.
-          </p>
-        </div>
+          </motion.p>
+        </motion.div>
 
-        <div className="hero-visual reveal" aria-hidden="true">
-          <div className="hero-window-bar">
-            <span /><span /><span />
-            <strong>Peerya Team OS</strong>
-          </div>
-          <div className="orbit orbit-one" />
-          <div className="orbit orbit-two" />
-          <div className="team-node node-main"><span>AI</span></div>
-          <div className="team-node node-a">ML</div>
-          <div className="team-node node-b">UX</div>
-          <div className="team-node node-c">FE</div>
-          <div className="team-node node-d">DS</div>
-          <div className="pulse-card pulse-one">
-            <span>AI assigns daily tasks</span>
-            <strong>Every member</strong>
-          </div>
-          <div className="pulse-card pulse-two">
-            <span>Next team sync</span>
-            <strong>Tue 7:30 PM</strong>
-          </div>
+        {/* 3D Scene replacement for static visual */}
+        <div className="relative w-full h-[600px] flex items-center justify-center">
+          <Hero3DScene />
         </div>
       </section>
 
       {/* ── TICKER ── */}
-      <section className="ticker-bar" aria-label="Global builders joining Peerya">
+      <section className="ticker-bar relative z-10" aria-label="Global builders joining Peerya">
         <div className="ticker-track">
           {tickerContent.map((item, index) => (
             <span key={`${item}-${index}`}>{item}</span>
@@ -399,25 +393,35 @@ export default function Home() {
       </section>
 
       {/* ── STATS ── */}
-      <section className="section stats-section">
-        <div className="stats-grid reveal-stagger">
-          {stats.map((s) => (
-            <AnimatedStat key={s.number} number={s.number} label={s.label} />
+      <section className="section stats-section relative z-10 mt-20">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-1 rounded-[var(--radius-lg)]">
+          {stats.map((s, index) => (
+            <AnimatedStat key={s.number} number={s.number} label={s.label} delay={index * 0.15} />
           ))}
         </div>
       </section>
 
       {/* ── TEAM PREVIEW ── */}
-      <section id="team-preview" className="section product-section glow-section">
-        <div className="section-heading reveal">
-          <p className="eyebrow">A team that feels real on day one</p>
-          <h2>What your team looks like.</h2>
-          <p>
+      <section id="team-preview" className="section product-section relative z-10">
+        <motion.div 
+          className="section-heading"
+          initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={staggerContainer}
+        >
+          <motion.p variants={fadeInUp} className="eyebrow">A team that feels real on day one</motion.p>
+          <motion.h2 variants={fadeInUp}>What your team looks like.</motion.h2>
+          <motion.p variants={fadeInUp}>
             A small, committed group with complementary skills, different levels,
             and one near-advanced member who can raise the ceiling for everyone.
-          </p>
-        </div>
-        <div className="product-card reveal">
+          </motion.p>
+        </motion.div>
+        
+        <motion.div 
+          className="product-card glass-card !p-0 overflow-hidden"
+          initial={{ opacity: 0, y: 50 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+        >
           <div className="product-top">
             <div>
               <span>Peerya Team 03</span>
@@ -425,124 +429,171 @@ export default function Home() {
             </div>
             <p>5 members · 4 countries · AI guided</p>
           </div>
-          <div className="member-list">
+          <div className="member-list p-6 flex flex-col gap-4">
             {sampleTeam.map((member) => (
-              <article className="member-row" key={member.name}>
-                <div className="member-avatar">{member.initials}</div>
-                <div className="member-info">
-                  <h3>
-                    {member.name} <span>{member.country}</span>
-                    {member.mentor ? <em aria-label="Mentor">♕</em> : null}
-                  </h3>
-                  <p>{member.skill}</p>
-                </div>
-                <span className="level-badge">{member.level}</span>
-              </article>
+              <Tilt key={member.name} tiltMaxAngleX={10} tiltMaxAngleY={10} perspective={1000} scale={1.02} transitionSpeed={1000}>
+                <article className="member-row glass-card !p-4 !min-h-0 flex items-center justify-between !border-[rgba(255,255,255,0.08)]">
+                  <div className="flex items-center gap-4">
+                    <div className="member-avatar shadow-lg shadow-violet-500/20">{member.initials}</div>
+                    <div className="member-info">
+                      <h3 className="text-white font-bold text-lg mb-1 flex items-center gap-2">
+                        {member.name} <span>{member.country}</span>
+                        {member.mentor ? <em aria-label="Mentor" className="bg-amber-500 text-black text-xs px-2 py-0.5 rounded-full not-italic">♕</em> : null}
+                      </h3>
+                      <p className="text-slate-400 text-sm">{member.skill}</p>
+                    </div>
+                  </div>
+                  <span className="level-badge border-cyan-500/30 text-cyan-400 bg-cyan-500/10 px-3 py-1 rounded-full text-sm font-semibold">{member.level}</span>
+                </article>
+              </Tilt>
             ))}
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* ── PROBLEM ── */}
-      <section id="problem" className="section">
-        <div className="section-heading reveal">
-          <p className="eyebrow">The quiet blocker</p>
-          <h2>The problem nobody talks about.</h2>
-        </div>
-        <div className="card-grid three">
+      <section id="problem" className="section relative z-10">
+        <motion.div 
+          className="section-heading"
+          initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={staggerContainer}
+        >
+          <motion.p variants={fadeInUp} className="eyebrow">The quiet blocker</motion.p>
+          <motion.h2 variants={fadeInUp}>The problem nobody talks about.</motion.h2>
+        </motion.div>
+        
+        <motion.div 
+          className="card-grid three"
+          initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={staggerContainer}
+        >
           {problemCards.map((card, index) => (
-            <article className="glass-card reveal" key={card}>
+            <motion.article variants={fadeInUp} className="glass-card" key={card}>
               <span className="card-number">0{index + 1}</span>
               <p>{card}</p>
-            </article>
+            </motion.article>
           ))}
-        </div>
+        </motion.div>
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section id="how-it-works" className="section glow-section">
-        <div className="section-heading reveal">
-          <p className="eyebrow">A real operating system</p>
-          <h2>How Peerya works.</h2>
-        </div>
-        <div className="timeline">
+      <section id="how-it-works" className="section relative z-10">
+        <motion.div 
+          className="section-heading"
+          initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={staggerContainer}
+        >
+          <motion.p variants={fadeInUp} className="eyebrow">A real operating system</motion.p>
+          <motion.h2 variants={fadeInUp}>How Peerya works.</motion.h2>
+        </motion.div>
+        <motion.div 
+          className="timeline"
+          initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={staggerContainer}
+        >
           {steps.map((step, index) => (
-            <article className="timeline-step reveal" key={step.title}>
-              <span>{index + 1}</span>
-              <h3>{step.title}</h3>
+            <motion.article variants={fadeInUp} className="timeline-step glass-card !p-8" key={step.title}>
+              <span className="text-4xl font-black text-violet-500/20 absolute top-4 right-6">{index + 1}</span>
+              <h3 className="text-xl font-bold mb-4">{step.title}</h3>
               <p>{step.body}</p>
-            </article>
+            </motion.article>
           ))}
-        </div>
+        </motion.div>
       </section>
 
       {/* ── WHY PEERYA ── */}
-      <section id="why-peerya" className="section">
-        <div className="section-heading reveal">
-          <p className="eyebrow">Built for compounding trust</p>
-          <h2>Why Peerya is different.</h2>
-        </div>
-        <div className="card-grid two">
+      <section id="why-peerya" className="section relative z-10">
+        <motion.div 
+          className="section-heading"
+          initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={staggerContainer}
+        >
+          <motion.p variants={fadeInUp} className="eyebrow">Built for compounding trust</motion.p>
+          <motion.h2 variants={fadeInUp}>Why Peerya is different.</motion.h2>
+        </motion.div>
+        <motion.div 
+          className="card-grid two"
+          initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={staggerContainer}
+        >
           {features.map((feature) => (
-            <article
+            <motion.article
+              variants={fadeInUp}
               id={feature.title === "Co-founder Matching" ? "for-founders" : undefined}
-              className="feature-card reveal"
+              className="feature-card glass-card"
               key={feature.title}
             >
-              <h3>{feature.title}</h3>
+              <h3 className="text-xl font-bold mb-4">{feature.title}</h3>
               <p>{feature.body}</p>
-            </article>
+            </motion.article>
           ))}
-        </div>
+        </motion.div>
       </section>
 
       {/* ── FOUNDER ── */}
-      <section id="founder" className="section founder-section glow-section">
-        <div className="founder-avatar reveal" aria-label="Founder — Mithun">M</div>
-        <div className="founder-copy reveal">
-          <p className="eyebrow">Founder story</p>
-          <h2>Why I built this.</h2>
-          <blockquote>
-            I&apos;m Mithun, a first year engineering student in India. I&apos;m
+      <section id="founder" className="section founder-section relative z-10">
+        <motion.div 
+          initial={{ opacity: 0, rotate: -15, scale: 0.8 }}
+          whileInView={{ opacity: 1, rotate: -3, scale: 1 }}
+          transition={{ type: "spring", stiffness: 200, damping: 20 }}
+          viewport={{ once: true }}
+          className="founder-avatar overflow-hidden p-0" aria-label="Founder"
+        >
+          <img src="/founder_avatar.jpg" alt="Founder" className="w-full h-full object-cover" />
+        </motion.div>
+        <motion.div 
+          className="founder-copy"
+          initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={staggerContainer}
+        >
+          <motion.p variants={fadeInUp} className="eyebrow">Founder story</motion.p>
+          <motion.h2 variants={fadeInUp}>Why I built this.</motion.h2>
+          <motion.blockquote variants={fadeInUp} className="text-xl leading-relaxed text-slate-300 italic pl-6 border-l-2 border-violet-500/50 mt-8">
+            I&apos;m a first year engineering student in India. I&apos;m
             building ML projects, an AI assistant, and a YouTube channel — all
             at the same time, and almost entirely alone. My college friends
             don&apos;t match my energy. The people who would get it are scattered
             across the world. I built Peerya because I needed it — and I know
             I&apos;m not the only one.
-          </blockquote>
-        </div>
+          </motion.blockquote>
+        </motion.div>
       </section>
 
       {/* ── FAQ ── */}
-      <section id="faq" className="section faq-section">
-        <div className="section-heading reveal">
-          <p className="eyebrow">Questions before you apply</p>
-          <h2>FAQ.</h2>
-        </div>
-        <div className="faq-list">
+      <section id="faq" className="section faq-section relative z-10">
+        <motion.div 
+          className="section-heading"
+          initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.3 }} variants={staggerContainer}
+        >
+          <motion.p variants={fadeInUp} className="eyebrow">Questions before you apply</motion.p>
+          <motion.h2 variants={fadeInUp}>FAQ.</motion.h2>
+        </motion.div>
+        <motion.div 
+          className="faq-list flex flex-col gap-4"
+          initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} variants={staggerContainer}
+        >
           {faqs.map((faq) => (
-            <details className="faq-item reveal" key={faq.question}>
-              <summary>{faq.question}</summary>
-              <p>{faq.answer}</p>
-            </details>
+            <motion.details variants={fadeInUp} className="faq-item glass-card !p-6 cursor-pointer" key={faq.question}>
+              <summary className="font-bold text-lg outline-none select-none">{faq.question}</summary>
+              <p className="mt-4 pt-4 border-t border-white/10 text-slate-400">{faq.answer}</p>
+            </motion.details>
           ))}
-        </div>
+        </motion.div>
       </section>
 
       {/* ── WAITLIST ── */}
-      <section id="waitlist" className="section waitlist-section glow-section">
-        <div className="waitlist-panel reveal">
+      <section id="waitlist" className="section waitlist-section relative z-10">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+          className="waitlist-panel glass-card !max-w-2xl mx-auto"
+        >
           {submitted ? (
             <div className="success-screen" role="status" aria-live="polite">
-              <div className="success-check">✓</div>
-              <h2>You&apos;re in, {firstName}.</h2>
-              <p>
+              <div className="success-check text-4xl mb-4 text-green-400">✓</div>
+              <h2 className="text-3xl font-bold mb-4">You&apos;re in, {firstName}.</h2>
+              <p className="text-slate-400 mb-8">
                 Check your email — we just sent you a confirmation. We&apos;ll
                 reach out personally when your Peerya team is ready.
               </p>
-              <div className="share-actions">
+              <div className="share-actions flex gap-4 justify-center">
                 <a
-                  className="share-button"
+                  className="button button-ghost"
                   href={`https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`}
                   target="_blank"
                   rel="noreferrer"
@@ -550,7 +601,7 @@ export default function Home() {
                   Share on X
                 </a>
                 <a
-                  className="share-button"
+                  className="button button-ghost"
                   href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
                   target="_blank"
                   rel="noreferrer"
@@ -561,18 +612,19 @@ export default function Home() {
             </div>
           ) : (
             <>
-              <div className="spots-remaining">🔥 Filling fast — limited to 100 seats</div>
+              <div className="spots-remaining inline-block bg-amber-500/10 text-amber-500 border border-amber-500/20 px-4 py-1 rounded-full text-sm font-bold mb-6">🔥 Filling fast — limited to 100 seats</div>
               <p className="eyebrow">Private beta</p>
-              <h2>Apply for the first 100.</h2>
-              <p>
+              <h2 className="text-4xl font-bold mb-4">Apply for the first 100.</h2>
+              <p className="text-slate-400 mb-8">
                 The first 100 members will personally shape how Peerya works.
                 Tell us who you are and what kind of team you need.
               </p>
-              <form className="waitlist-form" onSubmit={handleSubmit}>
-                <div className={`field-row ${missingFields.fullName ? "field-error" : ""}`}>
-                  <label htmlFor="fullName">Full Name</label>
+              <form className="waitlist-form flex flex-col gap-6" onSubmit={handleSubmit}>
+                <div className={`field-row flex flex-col gap-2 ${missingFields.fullName ? "field-error" : ""}`}>
+                  <label htmlFor="fullName" className="text-sm font-semibold text-slate-300">Full Name</label>
                   <input
                     id="fullName" name="fullName" type="text"
+                    className="bg-black/20 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-violet-500 transition-colors"
                     placeholder="Alex Johnson"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
@@ -580,10 +632,11 @@ export default function Home() {
                   />
                 </div>
 
-                <div className={`field-row ${missingFields.email ? "field-error" : ""}`}>
-                  <label htmlFor="email">Email Address</label>
+                <div className={`field-row flex flex-col gap-2 ${missingFields.email ? "field-error" : ""}`}>
+                  <label htmlFor="email" className="text-sm font-semibold text-slate-300">Email Address</label>
                   <input
                     id="email" name="email" type="email"
+                    className="bg-black/20 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-violet-500 transition-colors"
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -591,10 +644,11 @@ export default function Home() {
                   />
                 </div>
 
-                <div className={`field-row ${missingFields.country ? "field-error" : ""}`}>
-                  <label htmlFor="country">Country</label>
+                <div className={`field-row flex flex-col gap-2 ${missingFields.country ? "field-error" : ""}`}>
+                  <label htmlFor="country" className="text-sm font-semibold text-slate-300">Country</label>
                   <input
                     id="country" name="country" list="countries"
+                    className="bg-black/20 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-violet-500 transition-colors"
                     placeholder="Search your country"
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
@@ -605,10 +659,11 @@ export default function Home() {
                   </datalist>
                 </div>
 
-                <div className={`field-row ${missingFields.skillInterest ? "field-error" : ""}`}>
-                  <label htmlFor="skillInterest">Skill Interest</label>
+                <div className={`field-row flex flex-col gap-2 ${missingFields.skillInterest ? "field-error" : ""}`}>
+                  <label htmlFor="skillInterest" className="text-sm font-semibold text-slate-300">Skill Interest</label>
                   <select
                     id="skillInterest" name="skillInterest"
+                    className="bg-[#0f1424] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-violet-500 transition-colors appearance-none"
                     value={skillInterest}
                     onChange={(e) => setSkillInterest(e.target.value)}
                   >
@@ -616,81 +671,90 @@ export default function Home() {
                   </select>
                 </div>
 
-                <fieldset className={`level-field ${missingFields.skillLevel ? "field-error" : ""}`}>
-                  <legend>Skill Level</legend>
-                  <div className="level-grid">
+                <fieldset className={`level-field mt-4 ${missingFields.skillLevel ? "field-error" : ""}`}>
+                  <legend className="text-sm font-semibold text-slate-300 mb-4">Skill Level</legend>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {skillLevels.map((level) => (
                       <label
-                        className={`level-card ${skillLevel === level.title ? "selected" : ""}`}
+                        className={`glass-card !p-4 cursor-pointer relative overflow-hidden transition-all ${skillLevel === level.title ? "!border-violet-500 bg-violet-500/10 shadow-[0_0_20px_rgba(124,58,237,0.2)]" : "opacity-70 hover:opacity-100"}`}
                         key={level.title}
                       >
                         <input
                           type="radio" name="skillLevel" value={level.title}
+                          className="absolute opacity-0"
                           checked={skillLevel === level.title}
                           onChange={(e) => setSkillLevel(e.target.value)}
                         />
-                        <span>{level.title}</span>
-                        <p>{level.description}</p>
+                        <span className="block font-bold mb-2">{level.title}</span>
+                        <p className="text-sm text-slate-400">{level.description}</p>
                       </label>
                     ))}
                   </div>
                 </fieldset>
 
-                <fieldset className={`level-field ${missingFields.commitmentPeriod ? "field-error" : ""}`}>
-                  <legend>Commitment Period</legend>
-                  <div className="level-grid">
+                <fieldset className={`level-field mt-6 ${missingFields.commitmentPeriod ? "field-error" : ""}`}>
+                  <legend className="text-sm font-semibold text-slate-300 mb-4">Commitment Period</legend>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {commitmentPeriods.map((period) => (
                       <label
-                        className={`level-card ${commitmentPeriod === period.title ? "selected" : ""}`}
+                        className={`glass-card !p-4 cursor-pointer relative overflow-hidden transition-all ${commitmentPeriod === period.title ? "!border-violet-500 bg-violet-500/10 shadow-[0_0_20px_rgba(124,58,237,0.2)]" : "opacity-70 hover:opacity-100"}`}
                         key={period.title}
                       >
                         <input
                           type="radio" name="commitmentPeriod" value={period.title}
+                          className="absolute opacity-0"
                           checked={commitmentPeriod === period.title}
                           onChange={(e) => setCommitmentPeriod(e.target.value)}
                         />
-                        <span>{period.title}</span>
-                        <p>{period.description}</p>
+                        <span className="block font-bold mb-2">{period.title}</span>
+                        <p className="text-sm text-slate-400">{period.description}</p>
                       </label>
                     ))}
                   </div>
-                  <p className="commitment-note">
+                  <p className="text-xs text-slate-500 mt-4 text-center">
                     You can choose to continue with the same team after your commitment period ends.
                   </p>
                 </fieldset>
 
-                <button className="button submit-button" type="submit" disabled={submitting}>
-                  {submitting ? "Applying…" : "Apply for Early Access →"}
+                <button className="button button-large mt-6 w-full group relative overflow-hidden" type="submit" disabled={submitting}>
+                  <span className="relative z-10">{submitting ? "Applying…" : "Apply for Early Access →"}</span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                 </button>
               </form>
-              <p className="form-note" aria-live="polite">{formNote}</p>
+              <p className="text-center text-sm text-slate-400 mt-4" aria-live="polite">{formNote}</p>
             </>
           )}
-        </div>
+        </motion.div>
       </section>
 
       {/* ── CLOSING ── */}
-      <section className="section closing-section">
-        <div className="closing-copy reveal">
-          <h2 className="gradient-text">Your people are out there.</h2>
-          <p>They&apos;re just waiting for Peerya to find them.</p>
-          <a className="button button-large closing-cta" href="#waitlist">
-            Apply for Early Access — Free
-          </a>
-        </div>
+      <section className="section closing-section relative z-10 text-center min-h-[60vh] flex flex-col items-center justify-center overflow-hidden">
+        <ParticleCanvas />
+        <motion.div 
+          className="closing-copy relative z-10"
+          initial="hidden" whileInView="visible" viewport={{ once: true }} variants={staggerContainer}
+        >
+          <motion.h2 variants={fadeInUp} className="gradient-text !text-6xl md:!text-8xl mb-6">Your people are out there.</motion.h2>
+          <motion.p variants={fadeInUp} className="text-2xl text-slate-300 mb-10">They&apos;re just waiting for Peerya to find them.</motion.p>
+          <motion.div variants={fadeInUp}>
+            <a className="button button-large shadow-[0_0_40px_rgba(124,58,237,0.6)] animate-pulse" href="#waitlist">
+              Apply for Early Access — Free
+            </a>
+          </motion.div>
+        </motion.div>
       </section>
 
       {/* ── FOOTER ── */}
-      <footer className="footer">
-        <div>
-          <a className="brand" href="#hero">Peerya</a>
-          <p>Nobody learns alone anymore.</p>
+      <footer className="footer relative z-10 border-t border-white/10 mt-20 pt-10 pb-20 flex flex-col md:flex-row justify-between items-center px-8 text-slate-400 max-w-6xl mx-auto">
+        <div className="mb-6 md:mb-0">
+          <a className="brand text-2xl !text-white" href="#hero">Peerya</a>
+          <p className="mt-2 text-sm">Nobody learns alone anymore.</p>
         </div>
-        <div className="footer-links">
-          <a href="https://x.com" target="_blank" rel="noreferrer">Twitter/X</a>
-          <a href="https://linkedin.com" target="_blank" rel="noreferrer">LinkedIn</a>
+        <div className="flex gap-6 mb-6 md:mb-0">
+          <a href="https://x.com" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Twitter/X</a>
+          <a href="https://linkedin.com" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">LinkedIn</a>
         </div>
-        <p className="copyright">© 2026 Peerya. Built by Mithun.</p>
+        <p className="text-sm">© 2026 Peerya. Built by a fellow builder.</p>
       </footer>
     </main>
   );

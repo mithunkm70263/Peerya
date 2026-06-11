@@ -1361,3 +1361,57 @@ h3 {
   .member-row { padding: 12px; }
   .nav-proof { font-size: 0.83rem; }
 }
+
+/* ─────────────────────────────────────────────
+   NEW GLASSMORPHISM & ANIMATION OVERRIDES
+   ───────────────────────────────────────────── */
+
+body {
+  cursor: none !important;
+}
+
+a, button, input, select, textarea, label {
+  cursor: none !important;
+}
+
+.glass-card,
+.feature-card,
+.timeline-step,
+.product-card,
+.faq-item,
+.waitlist-panel {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease, border-color 0.4s ease, background 0.4s ease;
+}
+
+.glass-card:hover,
+.feature-card:hover,
+.timeline-step:hover,
+.faq-item:hover,
+.member-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(124, 58, 237, 0.6);
+  box-shadow: 
+    inset 0 0 20px rgba(124, 58, 237, 0.15),
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 15px rgba(124, 58, 237, 0.2);
+  transform: translateY(-6px);
+}
+
+.founder-avatar {
+  transform: rotate(-3deg);
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.founder-avatar:hover {
+  transform: rotate(0deg) scale(1.05);
+}
+
+/* Hide default cursor on interactive elements */
+* {
+  cursor: none !important;
+}
+
