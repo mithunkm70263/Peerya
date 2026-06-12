@@ -181,6 +181,57 @@ Early Stage Startup
 
 Currently validating demand and forming the first generation of learning teams.
 
+---
 
+## Technical Setup & Architecture
+
+### 1. Database (Supabase)
+Waitlist applications are stored in a `waitlist` table in Supabase. You can create the table using the following SQL in your Supabase SQL Editor:
+```sql
+create table waitlist (
+  id uuid default gen_random_uuid() primary key,
+  full_name text not null,
+  email text not null unique,
+  country text not null,
+  skill_interest text not null,
+  skill_level text not null,
+  commitment_period text not null,
+  project_idea text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Row Level Security (RLS)
+alter table waitlist enable row level security;
+create policy "Allow public inserts" on waitlist for insert with check (true);
+create policy "Allow read for service role" on waitlist for select using (true);
+```
+
+### 2. Local Backup Fallback
+If the database connection is offline, registrations automatically fall back to appending to `data/waitlist.json` to prevent data loss. This file is excluded from Git tracking in `.gitignore` to protect user data.
+
+### 3. Backend Email Automation (EmailJS REST API)
+Instead of executing EmailJS calls in the client browser (which exposes secret keys), email dispatches are routed through a secure Next.js API route (`/api/waitlist`). The route uses `Promise.all` to await both email fetch dispatches to ensure the serverless function execution context doesn't freeze prematurely:
+* **Applicant Confirmation**: Uses template ID `applicant_confirmation` to send a welcome email to the user.
+* **Founder Notification**: Uses template ID `founder_notification` to alert the founder of a new registration.
+
+### 4. Environment Variables (`.env.local`)
+Create a `.env.local` file at the root of the project:
+```env
+# Supabase Configuration
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
+
+# EmailJS Configuration (Keep secure on the server)
+EMAILJS_PUBLIC_KEY=your_emailjs_public_key
+EMAILJS_PRIVATE_KEY=your_emailjs_private_token
+EMAILJS_SERVICE_ID=your_emailjs_service_id
+EMAILJS_TEMPLATE_ID_APPLICANT=applicant_confirmation
+EMAILJS_TEMPLATE_ID_FOUNDER=founder_notification
+```
+
+---
 
 *"The internet gave us infinite knowledge. Peerya gives us a team."*
+
