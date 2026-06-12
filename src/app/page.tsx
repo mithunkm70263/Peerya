@@ -751,7 +751,7 @@ export default function Home() {
           <p className="mt-2 text-sm">Nobody learns alone anymore.</p>
         </div>
         <div className="flex gap-6 mb-6 md:mb-0">
-          <a href="https://x.com" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Twitter/X</a>
+          <a href="https://x.com/km_mikey90617" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Twitter/X</a>
           <a href="https://linkedin.com" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">LinkedIn</a>
         </div>
         <p className="text-sm">© 2026 Peerya. Built by a fellow builder.</p>
